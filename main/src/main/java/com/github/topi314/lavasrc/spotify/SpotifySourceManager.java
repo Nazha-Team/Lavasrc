@@ -382,7 +382,7 @@ public class SpotifySourceManager extends MirroringAudioSourceManager implements
         false
     );
 
-    if (json == null  json.get("tracks").get("items").values().isEmpty()) {
+    if (json == null || json.get("tracks").get("items").values().isEmpty()) {
         return AudioReference.NO_TRACK;
     }
 
