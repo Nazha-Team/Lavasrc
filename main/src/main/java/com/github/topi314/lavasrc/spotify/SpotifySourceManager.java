@@ -376,27 +376,44 @@ public class SpotifySourceManager extends MirroringAudioSourceManager implements
 	}
 
 	public AudioItem getSearch(String query, boolean preview) throws IOException {
-		var variables = "{\"searchTerm\":\"" + query.replace("\"", "\\\"") + "\",\"offset\":0,\"limit\":10,\"numberOfTopResults\":5,\"includeAudiobooks\":false,\"includeArtistHasConcertsField\":false,\"includePreReleases\":false}";
-		var json = this.postPartnerApi("searchDesktop", variables, HASH_SEARCH_DESKTOP);
-		if (json == null) {
-			return AudioReference.NO_TRACK;
-		}
+    var json = this.getJson(
+        API_BASE + "search?q=" + URLEncoder.encode(query, StandardCharsets.UTF_8) + "&type=track",
+        false,
+        false
+    );
 
-		var items = json.get("data").get("searchV2").get("tracksV2").get("items");
-		if (items.values().isEmpty()) {
-			return AudioReference.NO_TRACK;
-		}
+    if (json == null  json.get("tracks").get("items").values().isEmpty()) {
+        return AudioReference.NO_TRACK;
+    }
 
-		var tracks = new ArrayList<AudioTrack>();
-		for (var item : items.values()) {
-			var track = this.parseTrack(item.get("item").get("data"), preview);
-			if (track != null) {
-				tracks.add(track);
-			}
-		}
+    if (this.resolveArtistsInSearch) {
+        var tracks = json.get("tracks").get("items").values();
+        for (var track : tracks) {
+            var artistsArray = track.get("artists");
+            if (artistsArray == null  artistsArray.values().isEmpty()) continue;
 
-		return new BasicAudioPlaylist("Spotify Search: " + query, tracks, null, true);
-	}
+            var artistId = artistsArray.index(0).get("id").textOrDefault(null);
+            if (artistId == null) continue;
+
+            // Fetch artist info individually instead of batch
+            try {
+                var artistJson = this.getJson(API_BASE + "artists/" + artistId, false, false);
+                if (artistJson != null && artistJson.has("images")) {
+                    artistsArray.index(0).put("images", artistJson.get("images"));
+                }
+            } catch (IOException e) {
+                // log or ignore individual artist fetch failures
+            }
+        }
+    }
+
+    return new BasicAudioPlaylist(
+        "Spotify Search: " + query,
+        this.parseTrackItems(json.get("tracks"), preview),
+        null,
+        true
+    );
+}
 
 	public AudioItem getRecommendations(String query, boolean preview) throws IOException {
 		Matcher matcher = RADIO_MIX_QUERY_PATTERN.matcher(query);
