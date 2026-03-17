@@ -88,9 +88,8 @@ public class SpotifyTokenTracker {
 	private boolean hasValidCredentials() {
 		return clientId != null && !clientId.isEmpty() && clientSecret != null && !clientSecret.isEmpty();
 	}
-
-	public String getAccessToken(boolean preferAnonymousToken) throws IOException {
-		if (preferAnonymousToken || !hasValidCredentials()) {
+    public String getAccessToken(boolean useAnonymousToken) throws IOException {
+		if (useAnonymousToken || !hasValidCredentials()) {
 			return this.getAnonymousAccessToken();
 		}
 		if (this.accessToken == null || this.expires == null || this.expires.isBefore(Instant.now())) {
